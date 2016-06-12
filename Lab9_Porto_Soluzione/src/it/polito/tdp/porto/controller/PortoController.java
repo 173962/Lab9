@@ -4,6 +4,7 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import it.polito.tdp.porto.model.Articolo;
 import it.polito.tdp.porto.model.Autore;
@@ -118,7 +119,7 @@ public class PortoController {
 				return;
 	
 			} else {
-				List<Autore> coautori = model.getAutoriNeighbours(autoreSelezionato);
+				Set<Autore> coautori = model.getAutoriNeighbours(autoreSelezionato);
 				txtArea.setText("Trovati " + coautori.size() + " coautori.\n");
 				for (Autore coautore : coautori) {
 					txtArea.appendText(coautore + "\n");

@@ -1,8 +1,11 @@
 package it.polito.tdp.porto.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.jgrapht.Graphs;
 import org.jgrapht.alg.DijkstraShortestPath;
@@ -18,20 +21,13 @@ public class Model {
 	List<Autore> autori;
 	PortoDAO portoDAO;
 
-	// Creo un grafo semplice
-	// UndirectedGraph<Autore, Articolo> graph;
-
 	// Credo un multigrafo
-	Multigraph<Autore, Articolo> graph;
+	Multigraph<Autore, Edge> graph;
 
 	public Model() {
 		this.portoDAO = new PortoDAO();
 
-		// Utilizzo un grafo semplice
-		graph = new Multigraph<Autore, Articolo>(Articolo.class);
-
-		// Utilizzo un multigrafo
-		// TODO
+		graph = new Multigraph<Autore, Edge>(Edge.class);
 
 		this.setupGraph();
 	}
@@ -54,7 +50,7 @@ public class Model {
 
 				for (Autore autoreDestination : articolo.getAutori()) {
 					if (!autoreSource.equals(autoreDestination)) {
-						graph.addEdge(autoreSource, autoreDestination, articolo);
+						graph.addEdge(autoreSource, autoreDestination, new Edge(articolo));
 					}
 				}
 			}
@@ -69,9 +65,17 @@ public class Model {
 		return this.autori;
 	}
 
-	public List<Autore> getAutoriNeighbours(Autore autore) {
-		return Graphs.neighborListOf(graph, autore);
+	// ALLOW DUPLICATES
+//	public List<Autore> getAutoriNeighbours(Autore autore) {
+//		return Graphs.neighborListOf(graph, autore);
+//	}
+	
+	// DO NOT ALLOW DUPLICATES
+	public Set<Autore> getAutoriNeighbours(Autore autore) {
+		return new LinkedHashSet<Autore>(Graphs.neighborListOf(graph, autore));
 	}
+	
+	
 
 	public int getNumberOfConnectedSubgraphs() {
 
@@ -88,7 +92,7 @@ public class Model {
 
 			// Utilizzo DepthFirstIterator, in alternativa potrei utilizzare un
 			// BreadthFirstIterator<V, E> o una funzione ricorsiva custom.
-			GraphIterator<Autore, Articolo> dfi = new DepthFirstIterator<Autore, Articolo>(graph, autoreSource);
+			GraphIterator<Autore, Edge> dfi = new DepthFirstIterator<Autore, Edge>(graph, autoreSource);
 			while (dfi.hasNext()) {
 				Autore autoreTarget = dfi.next();
 				System.out.println(autoreTarget);
@@ -100,9 +104,15 @@ public class Model {
 	}
 
 	public List<Articolo> getArticoloCamminoMinimo(Autore autoreSource, Autore autoreTarget) {
-		DijkstraShortestPath<Autore, Articolo> dijstraShortestPath = new DijkstraShortestPath<Autore, Articolo>(graph,
-				autoreSource, autoreTarget);
-		return dijstraShortestPath.getPathEdgeList();
+		DijkstraShortestPath<Autore, Edge> dijstraShortestPath = new DijkstraShortestPath<Autore, Edge>(graph, autoreSource, autoreTarget);
+		
+		List<Articolo> articoli = new ArrayList<Articolo>();
+		for (Edge edge : dijstraShortestPath.getPathEdgeList()) {
+			if (! articoli.contains(edge.getArticolo())) {
+				articoli.add(edge.getArticolo()); 
+			}
+		}
+		return articoli;
 	}
 
 	public List<List<Articolo>> get5CamminiAriticolo(Autore autoreSource, Autore autoreTarget) {
@@ -111,7 +121,7 @@ public class Model {
 		// destinazione a 5.
 
 		Integer counter = 0;
-		List<Articolo> currentPath = new ArrayList<Articolo>();
+		List<Edge> currentPath = new ArrayList<Edge>();
 		List<List<Articolo>> fivePaths = new ArrayList<List<Articolo>>();
 
 		recursiveFivePaths(currentPath, fivePaths, counter, autoreSource, autoreTarget);
@@ -122,16 +132,24 @@ public class Model {
 
 	}
 
-	private boolean recursiveFivePaths(List<Articolo> currentPath, List<List<Articolo>> fivePaths, Integer counter,
+	private boolean recursiveFivePaths(List<Edge> currentPath, List<List<Articolo>> fivePaths, Integer counter,
 			Autore autoreCurrent, Autore autoreTarget) {
 
 		// Condizione di terminazione:
 		if (autoreCurrent.equals(autoreTarget) || currentPath.size() == graph.vertexSet().size()) {
 
 			counter++;
-			// Deep copy del contenuto di currentPath
-			fivePaths.add(new ArrayList<Articolo>(currentPath));
-			// Aggiungo la lista di currentPath ai fivePaths
+			
+			List<Articolo> articoliTemp = new ArrayList<Articolo>();
+			for (Edge edge : currentPath) {
+				if (! articoliTemp.contains(edge.getArticolo())) {
+					articoliTemp.add(edge.getArticolo()); 
+				}
+			}
+			// Copio gli articoli di currentPath ai fivePaths
+			fivePaths.add(articoliTemp);
+			
+			// Condizione di terminazione sull'esplorazione del grafo
 			if (counter == 5) {
 				return true;
 			}
